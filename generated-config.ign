@@ -1,0 +1,62 @@
+{
+  "ignition": {
+    "version": "3.3.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINUIOSIiG11pUNEtxVmTx1BOypyxWUOaZCg9izRvvwBK"
+        ]
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "path": "/var/lib/iptables/rules-save",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAAA5WRwQqCQBCG7z7FnKMFNYnwtulGQqbYRofoIOtGlrai06G3L83CIg+efpj5vmFmd3RMM5SlZnvrcMvBjYIQ9rqtHzR7EUQ7GrlftWDLa4w6Dgt5WyQUXjJJIVNAzm2708hBqOsVy1hcgBCBFcYoIWIrypk7ZhtO5ytvs2TuX7sAFEU9pAmSFKpEMM0e9pY0bBMtaxlTy+jBU5E3/CtJHQTvhQR9qDAZKsyGCsbPEe8fej68xNNzYQUYp1kl4kzqvWgXUa34QZ3A9z2uPQC5lh6yFwIAAA=="
+        },
+        "mode": 420
+      },
+      {
+        "overwrite": true,
+        "path": "/etc/flatcar/update.conf",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAAAwtydfL3D4kPDglyDHF1j7QtSk3Kzy/h8vF39g729QzxcIkPgqgI9/Rz8Q8HKnQMCrE1MLEyMMCtyMfVzz3Ew9YwgwsAqkZn818AAAA="
+        },
+        "mode": 272
+      }
+    ],
+    "links": [
+      {
+        "overwrite": true,
+        "path": "/etc/localtime",
+        "target": "/usr/share/zoneinfo/America/Chicago"
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "contents": "[Unit]\nDescription=Tailscale Docker Container\nAfter=docker.service\nRequires=docker.service\n\n[Service]\nExecStart=/usr/bin/docker run \\\n  --name tailscale \\\n  --rm \\\n  --hostname vpn-server \\\n  --network host \\\n  --label com.centurylinklabs.watchtower.enable=true \\\n  -e TS_AUTHKEY=tskey-auth-kjWQEZTtu721CNTRL-rERPYMKHCkJB6YpXDksrjJtvLMSm8RuR \\\n  -e TS_STATE_DIR=/var/lib/tailscale \\\n  -e TS_USERSPACE=false \\\n  -e TS_EXTRA_ARGS=\"--advertise-exit-node\" \\\n  -e TS_TAILSCALED_EXTRA_ARGS=\"--port=41641 --no-logs-no-support\" \\\n  -v tailscale:/var/lib/tailscale \\\n  --device=/dev/net/tun:/dev/net/tun \\\n  --cap-add=NET_ADMIN \\\n  ghcr.io/tailscale/tailscale:latest\nExecStop=/usr/bin/docker stop tailscale\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "tailscale.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Watchtower Docker Container Auto-Updater\nAfter=docker.service\nRequires=docker.service\n\n[Service]\nExecStart=/usr/bin/docker run \\\n  --name watchtower \\\n  --rm \\\n  --label com.centurylinklabs.watchtower.enable=true \\\n  -e WATCHTOWER_LABEL_ENABLE=true \\\n  -e WATCHTOWER_CLEANUP=true \\\n  -e WATCHTOWER_NO_RESTART=true \\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\n  ghcr.io/containrrr/watchtower:latest\nExecStop=/usr/bin/docker stop watchtower\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "watchtower.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Restore iptables rules\nAfter=network.target\n\n[Service]\nType=oneshot\nExecStart=/sbin/iptables-restore -n /var/lib/iptables/rules-save\nRemainAfterExit=yes\n\n[Install]\nWantedBy=multi-user.target",
+        "enabled": true,
+        "name": "iptables-restore.service"
+      }
+    ]
+  }
+}
